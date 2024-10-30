@@ -326,6 +326,9 @@ classdef AcadosOcpSolver < handle
             % usage:
             % ocp.set_p_global_and_precompute_dependencies(val)
             % Sets p_global to val and precomputes all parts of the CasADi graphs of all other functions that only depend on p_global.
+            if obj.ocp.dims.np_global ~= length(val)
+                error(['set_p_global_and_precompute_dependencies: val got shape ' num2str(length(val)), ' need ', num2str(obj.ocp.dims.np_global)]);
+            end
             obj.t_ocp.set('p_global', val);
         end
 
