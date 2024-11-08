@@ -24,7 +24,11 @@ ocp = AcadosOcp()
 
 # set model
 model = export_bicycle_model()
+param = ca.MX.sym('p', 1)
+model.p = param
 ocp.model = model
+ocp.dims.np = 1
+ocp.parameter_values = np.zeros((1, ))
 
 nx = model.x.rows()
 nu = model.u.rows()
@@ -37,27 +41,26 @@ ocp.solver_options.N_horizon = N
 ocp.solver_options.tf = Tf
 
 
-
 ###### set cost #####
 Qn = np.diag([8e-3, 8e-3, 0, 0, 0])
-R = np.diag([1e-5, 5e-2])
-# R = np.diag([0,0])
+# R = np.diag([1e-5, 5e-2])
+R = np.diag([0,0])
 W = np.block([[Qn, np.zeros((nx, nu))], [np.zeros((nu, nx)), R]])
 
 # start cost
 ocp.cost.cost_type_0 = 'NONLINEAR_LS'
-ocp.model.cost_y_expr_0 = ca.vertcat(model.x, model.u)
+ocp.model.cost_y_expr_0 = ca.vertcat(model.x*param, model.u)
 ocp.cost.yref_0 = np.zeros(nx+nu)
 ocp.cost.W_0 = W
 
 # intermediate cost
 ocp.cost.cost_type = 'NONLINEAR_LS'
-ocp.model.cost_y_expr = ca.vertcat(model.x, model.u)
+ocp.model.cost_y_expr = ca.vertcat(model.x*param, model.u)
 ocp.cost.yref = np.zeros(nx+nu)
 ocp.cost.W = W
 # terminal cost
 ocp.cost.cost_type_e = 'NONLINEAR_LS'
-ocp.model.cost_y_expr_e = model.x
+ocp.model.cost_y_expr_e = model.x*param
 ocp.cost.yref_e = np.zeros(nx)
 ocp.cost.W_e = Qn
 
@@ -112,6 +115,10 @@ ocp.solver_options.nlp_solver_type = 'SQP_RTI'
 # ocp.solver_options.print_level = 1
 
 ocp_solver = AcadosOcpSolver(ocp, json_file='acados_ocp.json')
+# set the params
+for i in range(N+1):
+    ocp_solver.set(i, "p", np.array([1.0]))
+
 # set the cost reference for each node
 for i in range(N):
     ocp_solver.cost_set(i, "yref", np.hstack((reference_track[i, :],np.zeros(nu))))
