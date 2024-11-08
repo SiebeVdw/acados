@@ -33,7 +33,8 @@ for i in range(K):
 
 spline = ca.bspline(tau, C1, knots, [degree], K, {})
 spline_function = ca.Function("spline", [tau], [spline])
-res = np.array([spline_function(point).full().flatten() for point in np.linspace(0,1,100)])
+# res = np.array([spline_function(point).full().flatten() for point in np.linspace(0,1,100)])
+res = spline_function(ca.linspace(0,1,100).T).T
 
 points = np.linspace(0, 1, K)
 A = np.array([spline_function(point).full().flatten() for point in points])
@@ -48,14 +49,16 @@ C = ca.solve(A, R, "csparse")
 # make spline with C as control points
 final_spline = ca.bspline(tau, C.T, knots, [degree], 2, {})
 final_spline_function = ca.Function("final_spline", [tau], [final_spline])
-final_res = np.array([final_spline_function(point).full().flatten() for point in np.linspace(0.0,1.0,1000)])
+# final_res = np.array([final_spline_function(point).full().flatten() for point in np.linspace(0.0,1.0,1000)])
+final_res = final_spline_function(ca.linspace(0,1,1000).T).T
 
 # calculate derivative
 final_spline_derivative = ca.jacobian(final_spline, tau)
 final_spline_derivative_function = ca.Function("final_spline_derivative", [tau], [final_spline_derivative])
 final_res_for_derivative = np.array([final_spline_function(point).full().flatten() for point in np.linspace(0.0,1.0,10)])
 final_res_derivative = np.array([final_spline_derivative_function(point).full().flatten() for point in np.linspace(0.0,1.0,10)])
-
+# final_res_for_derivative = final_spline_function(ca.linspace(0,1,10).T).T
+# final_res_derivative = final_spline_derivative_function(ca.linspace(0,1,10).T).T
 
 plt.plot(final_res[:,0], final_res[:,1], label='Bspline with control points')
 plt.plot(control_points_x, control_points_y, 'o', label='Control points')
@@ -65,7 +68,7 @@ plt.legend()
 plt.show()
 
 # plot basis functions
-for i in range(len(res[0])):
+for i in range(res.shape[1]):
     plt.plot(np.linspace(0,1,100),res[:,i], label=f'Spline basis function {i}')
     plt.plot(points, A[:,i], 'o', label = f'Basis function {i} evaluated at knots')
 plt.legend()
