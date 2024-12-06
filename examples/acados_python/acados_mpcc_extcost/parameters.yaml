@@ -1,0 +1,24 @@
+# Parameters used in the mpcc
+
+# cost
+ql: 1   # longitudinal cost
+qc: 1 # lateral cost
+ra: 1  # acceleration cost
+rs: 1  # steering cost
+rz: 1   # zeta cost
+
+# input boundary constraints
+alpha_min: -20  # TODO: calculatet these!
+alpha_max: 20
+phi_min: -2
+phi_max: 2
+zeta_min: 0.001
+zeta_max: 1.2
+
+# state boundary constraints
+delta_min: -45
+delta_max: 45
+v_min: 0
+v_max: 15 #m/s -> can be increased!
+tau_min: 0.000000001
+tau_max: 1

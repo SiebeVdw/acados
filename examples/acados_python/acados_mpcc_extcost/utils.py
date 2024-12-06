@@ -14,7 +14,7 @@ def initial_guess(reference_track, N, dt, ):
 
     L  = 1.6
     R_wheel = 0.2023
-    Tau0 = np.linspace(0.00001, 0.5, N + 1)
+    Tau0 = np.linspace(0.00001, 1.0, N + 1)
     X0 = []
     U0 = []
     for idx, tau in enumerate(Tau0):        

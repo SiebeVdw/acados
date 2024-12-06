@@ -1,9 +1,14 @@
 import casadi as ca
 from acados_template import AcadosModel
 import numpy as np
-
+import yaml
+from pathlib import Path
 
 def export_bicycle_model(n_control_points):
+
+    with open(Path(__file__).parent / "parameters.yaml") as file:
+        params = yaml.load(file, Loader=yaml.FullLoader)
+
     model_name = "bicycle_model"
 
     # parameters
@@ -55,22 +60,8 @@ def export_bicycle_model(n_control_points):
     spline_derivative = ca.jacobian(spline, tau)
     spline_derivative_function = ca.Function("spline_derivative", [tau, c_points], [spline_derivative])
 
-
-    # define cost
-    ql = 1e3   # longitudinal cost
-    qc = 1e3  # lateral cost
-    ra = 1e-2  # acceleration cost
-    rs = 1e-2  # steering cost
-    rz = 1e2   # zeta cost
-
-    # ql = 1e5   # longitudinal cost
-    # qc = 1e6  # lateral cost
-    # ra = 1e-3  # acceleration cost
-    # rs = 1e-1  # steering cost
-    # rz = 1e4   # zeta cost
-
-
-
+    # cost contributions
+    ql, qc, ra, rs, rz = params['ql'], params['qc'], params['ra'], params['rs'], params['rz']
 
     control_points_spline = ca.reshape(control_points, 2, n_control_points).T
     phi =   ca.atan2((spline_derivative_function(x[5], control_points_spline.T)[1] + 1e-6), spline_derivative_function(tau, control_points_spline.T)[0] + 1e-6)
