@@ -241,10 +241,36 @@ def solve_and_plot():
     # plt.scatter(x_sol[:,x_vars.index('x')], x_sol[:,x_vars.index('y')], c=range(N+1), cmap='viridis', label="Vehicle States")
     plt.plot(x_sol[:,x_vars.index('x')], x_sol[:,x_vars.index('y')], 'o-', label="Vehicle States")
     # plt.scatter(ref_track[:,0], ref_track[:,1], c=range(ref_track.shape[0]), cmap='plasma', marker='x', label="Reference Track")
-    plt.plot(ref_track[:,0], ref_track[:,1], 'x-', label="Reference Track")
-    plt.plot(x_guess[:,0], x_guess[:,1], 'o-', color='red', label="Initial Guess")
+    plt.plot(ref_track[:,0], ref_track[:,1], '--', label="Reference Track")
+    plt.plot([ref_track[-1,0], ref_track[0,0]], [ref_track[-1,1], ref_track[0,1]], 'k--')
+
+    # plt.plot(x_guess[:,0], x_guess[:,1], 'o-', color='red', label="Initial Guess")
     # plot initial position
-    plt.plot(x_guess[0,0], x_guess[0,1], 'bo', label="Initial Position")
+    plt.plot(x_guess[0,0], x_guess[0,1], 'ro', label="Initial Position")
+    # plot boundaries = parallel lines to the reference track and at distance track width
+    track_width = 1.5
+    normal0 = ref_track[0, :2] - ref_track[1, :2]
+    normal0 = np.array([-normal0[1], normal0[0]])
+    normal0 = normal0 / np.linalg.norm(normal0) * track_width
+    parallel1_prev = ref_track[0, :2] + normal0
+    parallel2_prev = ref_track[0, :2] - normal0
+    for i in range(1,ref_track.shape[0]):
+        # compute normal vector
+        normal = ref_track[i, :2] - ref_track[(i+1)%ref_track.shape[0], :2]
+        normal = np.array([-normal[1], normal[0]])
+        normal = normal / np.linalg.norm(normal) * track_width
+        # compute parallel lines
+        parallel1 = ref_track[i, :2] + normal
+        parallel2 = ref_track[i, :2] - normal
+        plt.plot([parallel1_prev[0], parallel1[0]], [parallel1_prev[1], parallel1[1]], 'r', linewidth=1.0)
+        plt.plot([parallel2_prev[0], parallel2[0]], [parallel2_prev[1], parallel2[1]], 'r', linewidth=1.0)
+        parallel1_prev = parallel1
+        parallel2_prev = parallel2
+    parallel1_0 = ref_track[0, :2] + normal0
+    parallel2_0 = ref_track[0, :2] - normal0
+    plt.plot([parallel1_prev[0], parallel1_0[0]], [parallel1_prev[1], parallel1_0[1]], 'r', linewidth=1.0)
+    plt.plot([parallel2_prev[0], parallel2_0[0]], [parallel2_prev[1], parallel2_0[1]], 'r', linewidth=1.0)
+
 
     # plot dotted lines connecting the states (X,Y) with the spline points spline(tau)
     for i in range(N+1):
