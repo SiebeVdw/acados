@@ -1,6 +1,76 @@
 import numpy as np
 import casadi as ca
 
+
+def create_spline_function(ref_track, with_derivative=False, degree=2):
+    degree = 2
+    n_control_points = ref_track.shape[0]
+    kk = np.linspace(0, 1, n_control_points - degree + 1)
+    knots = [[float(i) for i in np.concatenate([np.ones(degree) * kk[0], kk, np.ones(degree) * kk[-1]])]]
+    tau = ca.MX.sym("tau")
+    spline = ca.bspline(tau, ref_track[:,:2].T, knots, [degree], 2, {})
+    spline_function = ca.Function("spline", [tau], [spline])
+    if with_derivative:
+        spline_derivative = ca.jacobian(spline, tau)
+        spline_derivative_function = ca.Function("spline_derivative", [tau], [spline_derivative])
+        return spline_function, spline_derivative_function
+    return spline_function
+
+def create_error_function(ref_track, with_splines=False):
+    spline, dspline = create_spline_function(ref_track, with_derivative=True)
+    xpos = ca.MX.sym("xpos")
+    ypos = ca.MX.sym("ypos")
+    tau = ca.MX.sym("tau")
+    phi =   ca.atan2((dspline(tau)[1] + 1e-6), dspline(tau)[0] + 1e-6)
+    ec  =   ca.sin(phi) * (xpos - spline(tau)[0]) - ca.cos(phi) * (ypos - spline(tau)[1])
+    el  = - ca.cos(phi) * (xpos - spline(tau)[0]) - ca.sin(phi) * (ypos - spline(tau)[1])
+    ec_function = ca.Function("ec", [xpos, ypos, tau], [ec])
+    el_function = ca.Function("el", [xpos, ypos, tau], [el])
+    if with_splines:
+        return ec_function, el_function, spline, dspline
+    return ec_function, el_function
+
+def sample_equidistant_track_points(ref_track, distance):
+    spline_function = create_spline_function(ref_track)
+    ref_track = [[ref_track[0,0], ref_track[0,1]]]
+    tau = 0.0
+    while tau < 1.0:
+        dist = np.linalg.norm(spline_function(tau).full().flatten() - ref_track[-1])
+        if dist > distance:
+            ref_track.append(spline_function(tau).full().flatten())
+        tau += 0.00001
+    return np.array(ref_track)
+
+def extract_reference_track(ref_track, track_optimization_length):
+    reference_track_length = 0.0
+    for i in range(1, ref_track.shape[0]):
+        reference_track_length += np.linalg.norm(ref_track[i, 0:2] - ref_track[i-1, 0:2])
+        if reference_track_length > track_optimization_length:
+            return ref_track[:i, :]
+    print("Using the complete reference track for optimization")
+    return ref_track
+
+def print_cost_contributions(track, x, x_vars, u, u_vars, params):
+    dt = params['dt']
+    ql, qc, ra, rs, rz = params['ql'], params['qc'], params['ra'], params['rs'], params['rz']
+    ec, el = create_error_function(track)
+    longitudinal_cost, lateral_cost, acceleration_cost, steering_cost, zeta_cost = 0.0, 0.0, 0.0, 0.0, 0.0
+    for i in range(params['N']):
+        ec_val = ec(x[i, x_vars.index('x')], x[i, x_vars.index('y')], x[i, x_vars.index('tau')]).full().flatten()
+        el_val = el(x[i, x_vars.index('x')], x[i, x_vars.index('y')], x[i, x_vars.index('tau')]).full().flatten()
+        longitudinal_cost += ql*el_val**2*dt
+        lateral_cost += qc*ec_val**2*dt
+        acceleration_cost += ra*u[i, u_vars.index('alpha')]**2*dt
+        steering_cost += rs*u[i, u_vars.index('phi')]**2*dt
+        zeta_cost -= rz*u[i, u_vars.index('zeta')]*dt
+    print(f"longitudinal cost: {longitudinal_cost}")
+    print(f"lateral cost: {lateral_cost}")
+    print(f"acceleration cost: {acceleration_cost}")
+    print(f"steering cost: {steering_cost}")
+    print(f"zeta cost: {zeta_cost}")
+    print(f'sum of costs: {longitudinal_cost + lateral_cost + acceleration_cost + steering_cost + zeta_cost}')
+
+
 def initial_guess(reference_track, N, dt, params):
     tau = ca.MX.sym("tau")
     degree = 2

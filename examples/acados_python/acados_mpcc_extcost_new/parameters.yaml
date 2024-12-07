@@ -2,15 +2,21 @@
 
 # track parameters
 track_name: "fssim_fsi"
-track_optimization_length: 50.0
+track_optimization_length: 50000.0  # 50.0, 100.0, (1000000.0 for full track)
+distance_between_track_points: 5.0 # 0.5, 2.0, 5.0
 
 # car parameters
 wheelbase: 1.5
 wheel_radius: 0.2023 
 
+# ocp properties
+N: 20
+dt: 0.1
+Tf: 2.0
+
 # cost
 ql: 1   # longitudinal cost
-qc: 0.05 # lateral cost
+qc: 0.5 # lateral cost 0.5, 0.05, 0.02 (all with spline sampled from equidistant points)
 ra: 0.00001  # acceleration cost
 rs: 0.000000001  # steering cost
 rz: 5   # zeta cost
@@ -24,8 +30,8 @@ zeta_min: 0.001
 zeta_max: 1.2
 
 # state boundary constraints
-delta_min: -90 # maybe limit to 30 degrees?
-delta_max: 90
+delta_min: -45 # maybe limit to 30 degrees?
+delta_max: 45
 v_min: 0
 v_max: 12 #m/s
 tau_min: 0.000000001
@@ -35,6 +41,6 @@ tau_max: 1
 circle_radius: 0.8
 
 # initial guess method
-initial_guess: 'load' # 'calculate' or 'load' or 'load_and_shift'
+initial_guess: 'calculate' # 'calculate' or 'load' or 'load_and_shift'
 
-multi_solve: true
+multi_solve: false # true or false
