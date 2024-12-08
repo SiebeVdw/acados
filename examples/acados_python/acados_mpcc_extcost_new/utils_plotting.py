@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 from utils import create_error_function
+from pathlib import Path
 
 
 def plot_track_boundaries(track, width, closed_track=True, style='r--', lwidth=0.):  
@@ -28,50 +31,52 @@ def plot_result_time_series(x, x_guess, x_vars, u, u_guess, u_vars, params):
     N = params['N']
     # figure   
     fig, ax = plt.subplots(2,4)
-    # inputs
-    t = np.linspace(0,params['Tf'],params['N'])
-    ax[0,0].plot(t, u[:,u_vars.index('alpha')])
-    ax[0,0].step(t, u[:,u_vars.index('alpha')], where='post')
-    ax[0,0].step(t, u_guess[:,u_vars.index('alpha')], 'g--', where='post')
-    ax[0,0].plot(t, np.ones(N)*params['alpha_min'], 'r--')
-    ax[0,0].plot(t, np.ones(N)*params['alpha_max'], 'r--')
+    # time vectors
+    t_x = np.linspace(0,params['Tf'],params['N']+1)
+    t_u = t_x[:-1]
+    # inputs    
+    # ax[0,0].plot(t_u, u[:,u_vars.index('alpha')])
+    ax[0,0].step(t_u, u[:,u_vars.index('alpha')], where='post')
+    ax[0,0].step(t_u, u_guess[:,u_vars.index('alpha')], 'g--', where='post')
+    ax[0,0].plot(t_u, np.ones(N)*params['alpha_min'], 'r--')
+    ax[0,0].plot(t_u, np.ones(N)*params['alpha_max'], 'r--')
     ax[0,0].set_ylabel('rad/s²')
     ax[0,0].set_title('alpha')
-    ax[0,1].plot(t, u[:,u_vars.index('phi')]*180/np.pi)
-    ax[0,1].step(t, u[:,u_vars.index('phi')]*180/np.pi, where='post')
-    ax[0,1].step(t, u_guess[:,u_vars.index('phi')]*180/np.pi, 'g--', where='post')
-    ax[0,1].plot(t, np.ones(N)*params['phi_min']*180/np.pi, 'r--')
-    ax[0,1].plot(t, np.ones(N)*params['phi_max']*180/np.pi, 'r--')
+    # ax[0,1].plot(t_u, u[:,u_vars.index('phi')]*180/np.pi)
+    ax[0,1].step(t_u, u[:,u_vars.index('phi')]*180/np.pi, where='post')
+    ax[0,1].step(t_u, u_guess[:,u_vars.index('phi')]*180/np.pi, 'g--', where='post')
+    ax[0,1].plot(t_u, np.ones(N)*params['phi_min']*180/np.pi, 'r--')
+    ax[0,1].plot(t_u, np.ones(N)*params['phi_max']*180/np.pi, 'r--')
     ax[0,1].set_ylabel('degrees/s')
     ax[0,1].set_title('phi')
-    ax[0,2].plot(t, u[:,u_vars.index('zeta')])
-    ax[0,2].step(t, u[:,u_vars.index('zeta')], where='post')
-    ax[0,2].step(t, u_guess[:,u_vars.index('zeta')], 'g--', where='post')
-    ax[0,2].plot(t, np.ones(N)*params['zeta_min'], 'r--')
-    ax[0,2].plot(t, np.ones(N)*params['zeta_max'], 'r--')
+    # ax[0,2].plot(t_u, u[:,u_vars.index('zeta')])
+    ax[0,2].step(t_u, u[:,u_vars.index('zeta')], where='post')
+    ax[0,2].step(t_u, u_guess[:,u_vars.index('zeta')], 'g--', where='post')
+    ax[0,2].plot(t_u, np.ones(N)*params['zeta_min'], 'r--')
+    ax[0,2].plot(t_u, np.ones(N)*params['zeta_max'], 'r--')
     ax[0,2].set_title('zeta')
     # states
     t = np.linspace(0,params['Tf'],params['N']+1)
-    ax[1,0].plot(t, x[:,x_vars.index('theta')]*180/np.pi)
-    ax[1,0].plot(t, x_guess[:,x_vars.index('theta')]*180/np.pi, 'g--')
+    ax[1,0].plot(t_x, x[:,x_vars.index('theta')]*180/np.pi)
+    ax[1,0].plot(t_x, x_guess[:,x_vars.index('theta')]*180/np.pi, 'g--')
     ax[1,0].set_title('theta')
     ax[1,0].set_ylabel('degrees')
-    ax[1,1].plot(t, x[:,x_vars.index('delta')]*180/np.pi)
-    ax[1,1].plot(t, x_guess[:,x_vars.index('delta')]*180/np.pi, 'g--')
-    # ax[1,1].plot(t, np.ones(N+1)*params['delta_min'], 'r--')
-    # ax[1,1].plot(t, np.ones(N+1)*params['delta_max'], 'r--')
+    ax[1,1].plot(t_x, x[:,x_vars.index('delta')]*180/np.pi)
+    ax[1,1].plot(t_x, x_guess[:,x_vars.index('delta')]*180/np.pi, 'g--')
+    # ax[1,1].plot(t_x, np.ones(N+1)*params['delta_min'], 'r--')
+    # ax[1,1].plot(t_x, np.ones(N+1)*params['delta_max'], 'r--')
     ax[1,1].set_title('delta')
     ax[1,1].set_ylabel('degrees')
-    ax[1,2].plot(t, x[:,x_vars.index('v')])
-    ax[1,2].plot(t, x_guess[:,x_vars.index('v')], 'g--')
+    ax[1,2].plot(t_x, x[:,x_vars.index('v')])
+    ax[1,2].plot(t_x, x_guess[:,x_vars.index('v')], 'g--')
     ax[1,2].set_title('velocity')
-    ax[1,2].plot(t, np.ones(N+1)*params['v_min'], 'r--')
-    ax[1,2].plot(t, np.ones(N+1)*params['v_max'], 'r--')
+    ax[1,2].plot(t_x, np.ones(N+1)*params['v_min'], 'r--')
+    ax[1,2].plot(t_x, np.ones(N+1)*params['v_max'], 'r--')
     ax[1,2].set_ylabel('m/s')
-    ax[1,3].plot(t, x[:,x_vars.index('tau')])
-    ax[1,3].plot(t, x_guess[:,x_vars.index('tau')], 'g--')
-    ax[1,3].plot(t, np.ones(N+1)*params['tau_min'], 'r--')
-    ax[1,3].plot(t, np.ones(N+1)*params['tau_max'], 'r--')
+    ax[1,3].plot(t_x, x[:,x_vars.index('tau')])
+    ax[1,3].plot(t_x, x_guess[:,x_vars.index('tau')], 'g--')
+    ax[1,3].plot(t_x, np.ones(N+1)*params['tau_min'], 'r--')
+    ax[1,3].plot(t_x, np.ones(N+1)*params['tau_max'], 'r--')
     ax[1,3].set_title('tau')
     ax[1,3].set_ylabel('%')
     # position states at the left over plot 
@@ -132,3 +137,41 @@ def plot_result_xy(complete_track, track, x, x_guess, x_vars, params):
     plt.title("XY plot of one MPCC iteration")
 
     return fig
+
+def plot_solve_times_interactive(solve_times):
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.3)
+    def plot_hist(binsize, x_val):
+        ax.hist(solve_times, bins=int(binsize))
+        ax.set_title("Histogram of solver times")
+        ax.set_xlabel("Time [msec]")
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=10))
+        ax.axvline(x=x_val, color='red', linestyle='--', linewidth=1.5)
+        fig.canvas.draw_idle()
+        fraction_below = np.sum(solve_times < x_val)/solve_times.shape[0]*100
+        count_text = ax.text(0.55, 0.95, f'{fraction_below:.2f}% < {x_val}msec', 
+                        transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    initial_bins = 100
+    initial_x = 25
+    plot_hist(initial_bins, initial_x)
+    slider_binsize_ax = plt.axes([0.2, 0.15, 0.6, 0.03]) 
+    slider_binsize = Slider(slider_binsize_ax, 'bins', 1, 200, valinit=initial_bins, valstep=1)
+    slider_x_ax = plt.axes([0.2, 0.05, 0.6, 0.03]) 
+    slider_x = Slider(slider_x_ax, 'X Line', 0, int(1.05*max(solve_times)), valinit=initial_x, valstep=1)
+    
+    def update(val):
+        ax.clear()
+        plot_hist(slider_binsize.val, slider_x.val)
+    slider_binsize.on_changed(update)
+    slider_x.on_changed(update)
+    
+    plt.show()
+    return fig
+
+
+if __name__ == '__main__':
+    # plot solve times for a given run
+    run_name = "08-12-2024__14-56"
+    solve_times = np.load(Path(__file__).parent / "mpcc_results" / run_name / "solve_times.npy")
+    fig = plot_solve_times_interactive(solve_times)
+    fig.savefig(Path(__file__).parent / "mpcc_results" / run_name / "solve_times_hist", dpi=300)

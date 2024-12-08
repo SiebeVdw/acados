@@ -2,7 +2,7 @@ from model import export_bicycle_model
 from acados_template import AcadosOcp, AcadosOcpSolver
 import casadi as ca
 from utils import initial_guess, print_cost_contributions, sample_equidistant_track_points, extract_reference_track, create_spline_function
-from utils_plotting import plot_track_boundaries, plot_result_time_series, plot_result_xy
+from utils_plotting import plot_track_boundaries, plot_result_time_series, plot_result_xy, plot_solve_times_interactive
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ with open(Path(__file__).parent / "parameters.yaml") as file:
 # load the complete reference trajectory
 ref_track = np.load(Path(__file__).parent / "maps" / f"{params['track_name']}.npy")[1:]
 # apply a shift to the reference trajectory
-ref_track = np.roll(ref_track, -5, axis=0)
+ref_track = np.roll(ref_track, 0, axis=0)
 
 ##############################
 # create ref/reference track and plot
@@ -59,6 +59,9 @@ ocp.parameter_values = np.zeros((2*n_control_points, ))
 ocp.dims.nh = 1
 ocp.constraints.uh = np.array([0.0])
 ocp.constraints.lh = np.array([-params['circle_radius']**2-0.1])
+ocp.dims.nh_e = 1
+ocp.constraints.uh_e = np.array([0.0])
+ocp.constraints.lh_e = np.array([-params['circle_radius']**2-0.1])
 # dimensions and horizon
 nx = model.x.rows()
 nu = model.u.rows()
@@ -114,7 +117,7 @@ ocp.solver_options.hessian_approx = 'EXACT'
 ocp.solver_options.integrator_type = 'ERK'
 ocp.solver_options.nlp_solver_type = 'SQP'
 # ocp.solver_options.nlp_solver_type = 'SQP_RTI'
-ocp.solver_options.print_level = 2
+ocp.solver_options.print_level = 1
 # set max SQP iterations
 # ocp.solver_options.qp_solver_iter_max = 100
 # set max QP iterations
@@ -163,8 +166,8 @@ def solve_and_plot(save_path, with_plots=True):
         # plot xy plot 
         fig2 = plot_result_xy(ref_track, reference_track, x_sol, x_guess, x_vars, params)
         # save the figures
-        fig1.savefig(save_path / "time_series.png")
-        fig2.savefig(save_path / "xy_plot.png")
+        fig1.savefig(save_path / "time_series.png", dpi=300)
+        fig2.savefig(save_path / "xy_plot.png", dpi=300)
         # show the plots
         # plt.show()
         plt.close("all")
@@ -183,13 +186,13 @@ if __name__ == "__main__":
     yaml_path = result_path / "parameters.yaml"
     shutil.copy(Path(__file__).parent / "parameters.yaml", yaml_path)
     if params['multi_solve']:
-        solve_times = []
-        for i in range(150):
+        solve_times = np.zeros(params['n_solve_iterations'])
+        for i in range(params['n_solve_iterations']):
             result_iteration_path = result_path / "iterations" / f"iteration{i}"
             result_iteration_path.mkdir(parents=True, exist_ok=True)
             print(f"initial_guess in loop: {x_guess[0,:]}") 
-            x_sol, u_sol, solve_time = solve_and_plot(save_path=result_iteration_path, with_plots=True)
-            solve_times.append(solve_time)
+            x_sol, u_sol, solve_time = solve_and_plot(save_path=result_iteration_path, with_plots=params['with_plots']) 
+            solve_times[i] = solve_time
             # get previous solution
             x_guess, u_guess = x_sol, u_sol
             # shift one step and set as initial guess
@@ -204,5 +207,8 @@ if __name__ == "__main__":
                 ocp_solver.set(i, "u", u_guess[i, :])
 
         np.save(result_path / 'solve_times', np.array(solve_times))
+        # always plot time histogram
+        fig = plot_solve_times_interactive(solve_times)
+        fig.savefig(result_path / "solve_times_hist", dpi=300)
     else:
         solve_and_plot(save_path=result_path, with_plots=True)

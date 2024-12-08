@@ -1,9 +1,11 @@
 # Parameters used in the mpcc
 
 # track parameters
-track_name: "fssim_fsi"
-track_optimization_length: 50000.0  # 50.0, 100.0, (1000000.0 for full track)
-distance_between_track_points: 5.0 # 0.5, 2.0, 5.0
+track_name: "fssim_fsg"
+track_optimization_length: 5000000.0  # 50.0, 100.0, (1000000.0 for full track)
+distance_between_track_points: 2.0 # 0.5, 2.0, 5.0
+with_plots: true # true or false
+n_solve_iterations: 400
 
 # car parameters
 wheelbase: 1.5
@@ -16,15 +18,15 @@ Tf: 2.0
 
 # cost
 ql: 1   # longitudinal cost
-qc: 0.5 # lateral cost 0.5, 0.05, 0.02 (all with spline sampled from equidistant points)
+qc: 0.02 # lateral cost 0.5, 0.05, 0.02 (all with spline sampled from equidistant points)
 ra: 0.00001  # acceleration cost
-rs: 0.000000001  # steering cost
+rs: 0.000000001  # steering cost -> 0.000000001 worked fine
 rz: 5   # zeta cost
 
 # input boundary constraints
 alpha_min: -15  # TODO: calculatet these!
 alpha_max: 15 # 2*Tmax*GR/Rwheel/mass = 17.45m/s^2 (Tmax=140Nm, GR=3.405, Rwheel=0.2023m, mass=270kg)
-phi_min: -1.5 # in 1 second from -45 to 45 degrees -> 60 degrees -> 1.571 rad/sec
+phi_min: -1.5 # in 1 second from -45 to 45 degrees -> 90 degrees -> 1.571 rad/sec
 phi_max: 1.5
 zeta_min: 0.001
 zeta_max: 1.2
@@ -35,7 +37,7 @@ delta_max: 45
 v_min: 0
 v_max: 12 #m/s
 tau_min: 0.000000001
-tau_max: 1
+tau_max: 2.0
 
 # nonlinear constraints
 circle_radius: 0.8
@@ -43,4 +45,4 @@ circle_radius: 0.8
 # initial guess method
 initial_guess: 'calculate' # 'calculate' or 'load' or 'load_and_shift'
 
-multi_solve: false # true or false
+multi_solve: true # true or false

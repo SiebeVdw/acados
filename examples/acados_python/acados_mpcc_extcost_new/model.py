@@ -64,15 +64,16 @@ def export_bicycle_model(n_control_points):
     ql, qc, ra, rs, rz = params['ql'], params['qc'], params['ra'], params['rs'], params['rz']
 
     control_points_spline = ca.reshape(control_points, 2, n_control_points).T
-    phi =   ca.atan2((spline_derivative_function(x[5], control_points_spline.T)[1] + 1e-6), spline_derivative_function(tau, control_points_spline.T)[0] + 1e-6)
-    ec  =   ca.sin(phi) * (x[0] - spline_function(x[5], control_points_spline.T)[0]) - ca.cos(phi) * (x[1] - spline_function(tau, control_points_spline.T)[1])
-    el  = - ca.cos(phi) * (x[0] - spline_function(x[5], control_points_spline.T)[0]) - ca.sin(phi) * (x[1] - spline_function(tau,control_points_spline.T)[1])
+    tau_mod = ca.fmod(tau, 1.0)
+    phi =   ca.atan2((spline_derivative_function(tau_mod, control_points_spline.T)[1] + 1e-6), spline_derivative_function(tau_mod, control_points_spline.T)[0] + 1e-6)
+    ec  =   ca.sin(phi) * (x[0] - spline_function(tau_mod, control_points_spline.T)[0]) - ca.cos(phi) * (x[1] - spline_function(tau_mod, control_points_spline.T)[1])
+    el  = - ca.cos(phi) * (x[0] - spline_function(tau_mod, control_points_spline.T)[0]) - ca.sin(phi) * (x[1] - spline_function(tau_mod,control_points_spline.T)[1])
 
     model.cost_expr_ext_cost = qc*ec**2 + ql*el**2 + ra*alpha**2 + rs*phi**2 - rz*zeta
-    model.cost_expr_ext_cost_e = qc*ec**2 + ql*el**2
-
+    model.cost_expr_ext_cost_e = 0.01*qc*ec**2 + 0.1*ql*el**2
     # define constraints
     half_track_width = params['circle_radius'] # half track width is always larger than 1.5m (+ take car width into account)
     model.con_h_expr = ec**2 + el**2 - half_track_width**2 
+    model.con_h_expr_e = ec**2 + el**2 - half_track_width**2
 
     return model

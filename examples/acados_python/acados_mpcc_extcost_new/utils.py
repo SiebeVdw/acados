@@ -1,5 +1,6 @@
 import numpy as np
 import casadi as ca
+import matplotlib.pyplot as plt
 
 
 def create_spline_function(ref_track, with_derivative=False, degree=2):
@@ -31,13 +32,18 @@ def create_error_function(ref_track, with_splines=False):
     return ec_function, el_function
 
 def sample_equidistant_track_points(ref_track, distance):
-    spline_function = create_spline_function(ref_track)
-    ref_track = [[ref_track[0,0], ref_track[0,1]]]
+    spline_function = create_spline_function(np.vstack((ref_track, ref_track[0,:])))
+    prev_point = [[ref_track[0,0], ref_track[0,1]]]
+    ref_track = []
     tau = 0.0
+    dist=0.0
     while tau < 1.0:
-        dist = np.linalg.norm(spline_function(tau).full().flatten() - ref_track[-1])
+        point = spline_function(tau).full().flatten()
+        dist += np.linalg.norm(point - prev_point)
         if dist > distance:
             ref_track.append(spline_function(tau).full().flatten())
+            dist = 0.0
+        prev_point = point
         tau += 0.00001
     return np.array(ref_track)
 
@@ -48,6 +54,8 @@ def extract_reference_track(ref_track, track_optimization_length):
         if reference_track_length > track_optimization_length:
             return ref_track[:i, :]
     print("Using the complete reference track for optimization")
+    # add the first point at the end
+    ref_track = np.vstack((ref_track, ref_track[0,:]))
     return ref_track
 
 def print_cost_contributions(track, x, x_vars, u, u_vars, params):
@@ -82,78 +90,50 @@ def initial_guess(reference_track, N, dt, params):
     spline_derivative = ca.jacobian(spline, tau)
     spline_derivative_function = ca.Function("spline_derivative", [tau], [spline_derivative])
 
-    L  = params['wheelbase']
-    R_wheel = params['wheel_radius']
-
-    # create an array of tau values such that the distance between the points is equidistant
-    tau_array = np.linspace(0.00001, 1, 1000)
-    spline_points = np.array([spline_function(t) for t in tau_array])
-    Tau0 = np.zeros(N + 1)
+    Tau0 = np.zeros(N+1)
+    velocity = np.zeros(N+1)
+    acceleration = np.zeros(N)  
+    x, y = np.zeros(N+1), np.zeros(N+1)
+    theta = np.zeros(N+1)
+    delta = np.zeros(N+1)
+    ddelta = np.zeros(N)
+    zeta = np.zeros(N)
     Tau0[0] = 0.00001
-    length = 0.0
-    j = 1
-    for i in range(1, len(spline_points)):
-        length += np.linalg.norm(spline_points[i] - spline_points[i - 1])
-        if length > 18.0/N:
-            length = 0.0
-            Tau0[j] = tau_array[i]
-            j += 1
-            if j > N:
-                break
-
-    X0 = []
-    U0 = []
-    for idx, tau in enumerate(Tau0):        
-        if idx == 0:
-            x0 = np.array(spline_function(tau)).flatten()
-
-            der_points = np.array(spline_derivative_function(tau)).flatten()
-            phi = ca.atan2(der_points[1], der_points[0])
-
-            x0_state = [x0[0], x0[1], phi, 0, 200, tau]
-            X0.append(x0_state)
-            continue
-        
-        x0 = np.array(spline_function(tau)).flatten()
-        steering_angle = 0
-        der_points = np.array(spline_derivative_function(tau)).flatten()
-        phi = ca.atan2(der_points[1], der_points[0])
+    v0 = 10.0
+    a_max = params['alpha_max'] * params['wheel_radius']
+    velocity[0] = v0
+    x[0], y[0] = spline_function(Tau0[0]).full().flatten()
+    dx0, dy0 = spline_derivative_function(Tau0[0]).full().flatten()
+    theta[0] = ca.arctan2(dy0, dx0)
+    for i in range(1, N+1):
+        x0 = spline_function(Tau0[i-1]).full().flatten()
+        tau = Tau0[i-1]
+        x1 = x0
+        while np.linalg.norm(x1-x0) < min(v0*dt+a_max*dt**2/2, params['v_max']*dt):
+            tau += 0.000001
+            x1 = spline_function(tau).full().flatten()
+        Tau0[i] = tau
+        v0 = min(v0 + a_max*dt, params['v_max'])
+        velocity[i] = v0
+        if i < N:
+            acceleration[i] = min(a_max, (params['v_max'] - v0)/dt)
+        x[i], y[i] = x1
+        # heading
+        der_points = np.array(spline_derivative_function(Tau0[i]).full().flatten())
+        prev_heading = theta[i-1]
+        phi = ca.arctan2(der_points[1], der_points[0])
         heading = phi
-
-        diff_with_prev = heading - X0[-1][2]
+        diff_with_prev = heading - prev_heading
         diff_with_prev = ca.fmod(diff_with_prev + np.pi, 2 * np.pi) - np.pi
-        heading = X0[-1][2] + diff_with_prev
-
-        alpha = heading - X0[-1][2]
-        alpha /= 2
-        l_d = np.sqrt((x0[0] - X0[-1][0]) ** 2 + (x0[1] - X0[-1][1]) ** 2)
-        # avoid division by zero
-        if alpha > 1e-6:
-            R = (l_d) / (2 * np.sin(alpha))
-        else:
-            R = 1e6
-        steering_angle = np.arctan(L / R)
-
-        velocity = (
-            np.sqrt((x0[0] - X0[-1][0]) ** 2 + (x0[1] - X0[-1][1]) ** 2)
-            / dt
-        )
-
-        x0_state = np.array([x0[0], x0[1], heading, steering_angle, velocity, tau])
-        X0.append(x0_state)
-
-    # X0[0][2] = X0[1][2]
-    X0[0][4] = X0[1][4]
-
+        theta[i] = prev_heading + diff_with_prev
+        # steering angle -> choice to take 'i-1', then it is forwards differences to integrate omega. 
+        delta[i-1] = ca.atan2(diff_with_prev*params['wheelbase'], dt*velocity[i])
+        # zeta
+        zeta[i-1] = (Tau0[i] - Tau0[i-1])/dt
+    acceleration[0] = acceleration[1]
+    delta[-1] = delta[-2]
     for i in range(N):
-        acceleration = (X0[i + 1][4] - X0[i][4]) / dt / R_wheel
-        steering_angle_delta = X0[i + 1][3] - X0[i][3]
-        steering_angle_delta /= dt
-        dtau = (X0[i + 1][5] - X0[i][5]) / dt
-        U0.append([acceleration, steering_angle_delta, dtau])
-
-    X0 = np.array(X0)
-    U0 = np.array(U0)
-
+        ddelta[i] = (delta[i+1] - delta[i])/dt  
+    X0 = np.array([x, y, theta, delta, velocity, Tau0]).T
+    U0 = np.array([acceleration/params['wheel_radius'], ddelta, zeta]).T
     return X0, U0
-

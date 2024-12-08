@@ -7,9 +7,14 @@ from utils import create_spline_function
 import casadi as ca
 
 
-run_name = "07-12-2024__10-28"
 
-num_files = 150
+run_name = "08-12-2024__14-56"
+# load the parameters
+with open(Path(__file__).parent / "mpcc_results" / run_name / "parameters.yaml") as file:
+    params = yaml.load(file, Loader=yaml.FullLoader)
+
+
+num_files = params['n_solve_iterations']
 
 # Initialize figure and axis
 fig, ax = plt.subplots()
@@ -18,9 +23,6 @@ line, = ax.plot([], [], 'bo-', label='Prediction', markersize=2)
 ######
 # reference 
 #####
-# load the parameters
-with open(Path(__file__).parent / "mpcc_results" / run_name / "parameters.yaml") as file:
-    params = yaml.load(file, Loader=yaml.FullLoader)
 # load reference track
 ref_track = np.load(Path(__file__).parent / "maps" / f"{params['track_name']}.npy")[1:]
 ax.plot(ref_track[:, 0], ref_track[:, 1], 'y--', label='Centerline')
@@ -64,8 +66,12 @@ for i in range(num_files):
 initial_states_path = np.array(initial_states_path)
 ax.plot(initial_states_path[:,0], initial_states_path[:,1], 'g--', label='Actual driven raceline', markersize=2)
 
-ax.set_xlim(-60, 50)
-ax.set_ylim(-30, 15) # (-30,15) for fssim_fsi
+if params['track_name'] == 'fssim_fsi':
+    ax.set_xlim(-60, 50)
+    ax.set_ylim(-30, 15)
+elif params['track_name'] == 'fssim_fsg':
+    ax.set_xlim(-60, 50)
+    ax.set_ylim(-90, 15)
 ax.set_xlabel('X Position')
 ax.set_ylabel('Y Position')
 ax.legend()
@@ -108,17 +114,4 @@ path = Path(__file__).parent / "mpcc_results" / run_name /"mpcc_animation.gif"
 ani.save(path, writer='pillow', fps=10, dpi=300)
 
 # To save or display the animation
-plt.show()
-
-
-solve_times_path = Path(__file__).parent / "mpcc_results" / run_name / "solve_times.npy"
-solve_times = np.load(solve_times_path)
-fig = plt.figure()
-plt.hist(solve_times, bins=20)
-plt.title('Histogram of solve times')
-plt.ylabel('Time [msec]')
-# save the figure
-path = Path(__file__).parent / "mpcc_results" / run_name / "solve_times_hist.png"
-fig.savefig(path)
-
 plt.show()
