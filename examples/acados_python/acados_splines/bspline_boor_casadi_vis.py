@@ -34,7 +34,7 @@ for i in range(K):
 spline = ca.bspline(tau, C1, knots, [degree], K, {})
 spline_function = ca.Function("spline", [tau], [spline])
 # res = np.array([spline_function(point).full().flatten() for point in np.linspace(0,1,100)])
-res = spline_function(ca.linspace(0,1,100).T).T
+res = spline_function(ca.linspace(0,1,1000).T).T
 
 points = np.linspace(0, 1, K)
 A = np.array([spline_function(point).full().flatten() for point in points])
@@ -69,8 +69,12 @@ plt.show()
 
 # plot basis functions
 for i in range(res.shape[1]):
-    plt.plot(np.linspace(0,1,100),res[:,i], label=f'Spline basis function {i}')
-    plt.plot(points, A[:,i], 'o', label = f'Basis function {i} evaluated at knots')
+    plt.plot(np.linspace(0,1,1000),res[:,i])
+    # plt.plot(points, A[:,i], 'o', label = f'Basis function {i} evaluated at knots')
+plt.xlabel('tau', fontsize=24)
+plt.ylabel("Basis function value", fontsize=24)
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
 plt.legend()
 plt.show()
 

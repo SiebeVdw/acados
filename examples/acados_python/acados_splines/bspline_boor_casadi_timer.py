@@ -75,6 +75,36 @@ def calc_times_casadi(num_points):
     return dt_generate_spline*1e3, dt_eval_spline*1e3, dt_eval_spline_1000*1e3, dt_generat_derivative*1e3, dt_eval_derivative*1e3, dt_eval_derivative_1000*1e3
 
 
+
+def calc_times_casadi_simple(num_points):
+    degree = 2
+
+    angles = np.linspace(0, 4*np.pi, num_points)  
+    def get_control_points(angles):
+        return angles, np.sin(angles)*np.cos(angles)**2
+        # return angles**2/np.sqrt((4*np.pi+1)**2 - angles**2), np.sin(angles)*np.cos(angles)**2
+    control_points_x, control_points_y = get_control_points(angles)
+    ref_track = np.array([control_points_x, control_points_y]).T
+    degree = 2
+    n_control_points = ref_track.shape[0]
+    kk = np.linspace(0, 1, n_control_points - degree + 1)
+    knots = [[float(i) for i in np.concatenate([np.ones(degree) * kk[0], kk, np.ones(degree) * kk[-1]])]]
+    tau = ca.MX.sym("tau")
+    spline = ca.bspline(tau, ref_track[:,:2].T, knots, [degree], 2, {})
+    spline_function = ca.Function("spline", [tau], [spline])
+    t0 = time.perf_counter()
+    _ = np.array(spline_function(0.5).full().flatten())
+    dt_eval_spline = time.perf_counter() - t0
+
+    dspline = ca.jacobian(spline, tau)
+    dspline_function = ca.Function("dspline", [tau], [dspline])
+    t0 = time.perf_counter()
+    _ = np.array(dspline_function(0.5).full().flatten())
+    dt_eval_dspline = time.perf_counter() - t0
+    return dt_eval_spline*1e3, dt_eval_dspline*1e3
+
+
+
 if __name__ == "__main__":
     num_points_array = np.linspace(10,200,191)
     dt_generate_spline_array = np.zeros(len(num_points_array))
