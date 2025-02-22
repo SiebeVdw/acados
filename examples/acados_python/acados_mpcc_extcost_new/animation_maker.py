@@ -8,7 +8,7 @@ import casadi as ca
 
 
 
-run_name = "08-12-2024__14-56"
+run_name = "08-12-2024__17-08"
 # load the parameters
 with open(Path(__file__).parent / "mpcc_results" / run_name / "parameters.yaml") as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -18,20 +18,20 @@ num_files = params['n_solve_iterations']
 
 # Initialize figure and axis
 fig, ax = plt.subplots()
-line, = ax.plot([], [], 'bo-', label='Prediction', markersize=2)  
+line, = ax.plot([], [], 'bo-', label='Prediction', linewidth=1.0, markersize=1.0)  
 
 ######
 # reference 
 #####
 # load reference track
 ref_track = np.load(Path(__file__).parent / "maps" / f"{params['track_name']}.npy")[1:]
-ax.plot(ref_track[:, 0], ref_track[:, 1], 'y--', label='Centerline')
+ax.plot(ref_track[:, 0], ref_track[:, 1], 'k--', label='Centerline', linewidth=0.5)
 # load the reference track used for optimization
 data =  np.load(Path(__file__).parent / "mpcc_results" / run_name / "iterations" / f"iteration0" / "data.npz")
 ref_track_optimzation = data['ref_track']
 spline = create_spline_function(ref_track_optimzation)
 points = spline(ca.linspace(0, 1, 1000).T).full().T
-ax.plot(points[:, 0], points[:, 1], 'b--', label='centerline used for optimization')
+# ax.plot(points[:, 0], points[:, 1], 'b--', label='centerline used for optimization')
 # plot boundaries = parallel lines to the reference track and at distance track width
 track_width = 1.5
 normal0 = ref_track[0, :2] - ref_track[1, :2]
@@ -64,7 +64,7 @@ for i in range(num_files):
     data = np.load(Path(__file__).parent / "mpcc_results" / run_name / "iterations" / f"iteration{i}" / "data.npz")
     initial_states_path.append([data['x'][0, 0], data['x'][0, 1]])
 initial_states_path = np.array(initial_states_path)
-ax.plot(initial_states_path[:,0], initial_states_path[:,1], 'g--', label='Actual driven raceline', markersize=2)
+ax.plot(initial_states_path[:,0], initial_states_path[:,1], 'g--', label='Actual driven raceline', linewidth=1.0)
 
 if params['track_name'] == 'fssim_fsi':
     ax.set_xlim(-60, 50)
@@ -72,10 +72,13 @@ if params['track_name'] == 'fssim_fsi':
 elif params['track_name'] == 'fssim_fsg':
     ax.set_xlim(-60, 50)
     ax.set_ylim(-90, 15)
-ax.set_xlabel('X Position')
-ax.set_ylabel('Y Position')
-ax.legend()
-ax.grid()
+# ax.set_xlabel('X Position')
+# ax.set_ylabel('Y Position')
+ax.legend(loc='upper left', bbox_to_anchor=(0.5, 1.2))
+# ax.legend(loc='upper left')
+plt.axis("off")
+
+# ax.grid()
 ax.set_aspect('equal')
 
 
@@ -110,8 +113,10 @@ def update(frame):
 ani = FuncAnimation(fig, update, frames=num_files, init_func=init, blit=False)
 
 # Save the animation as a GIF
-path = Path(__file__).parent / "mpcc_results" / run_name /"mpcc_animation.gif"
-ani.save(path, writer='pillow', fps=10, dpi=300)
+# path = Path(__file__).parent / "mpcc_results" / run_name /"mpcc_animation.gif"
+# ani.save(path, writer='pillow', fps=10, dpi=300)
+path = Path(__file__).parent / "mpcc_results" / run_name /"mpcc_animation.mp4"
+ani.save(path, fps=10, dpi=300)
 
 # To save or display the animation
 plt.show()
